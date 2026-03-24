@@ -9,22 +9,16 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import requests
+from feishu_auth import get_auth_hint, get_user_access_token
 
 BASE_URL = 'https://open.feishu.cn/open-apis'
-SCRIPT_DIR = Path(__file__).resolve().parent
-TOKEN_FILE = SCRIPT_DIR.parent / '.feishu-user-token.json'
 
 
 def get_access_token() -> str:
-    token = os.getenv('FEISHU_USER_ACCESS_TOKEN')
+    token = get_user_access_token()
     if token:
         return token
-    if TOKEN_FILE.exists():
-        data = json.loads(TOKEN_FILE.read_text())
-        token = data.get('access_token')
-        if token:
-            return token
-    raise RuntimeError('缺少 FEISHU_USER_ACCESS_TOKEN，且未在 skill 目录中找到已保存的 user token')
+    raise RuntimeError(get_auth_hint())
 
 
 def extract_token(source: str) -> str:
@@ -62,28 +56,7 @@ def resolve_doc_token(access_token: str, source: str) -> str:
     return token
 
 
-def upload_image(access_token: str, doc_token: str, image_path: Path) -> str:
-    if not image_path.exists():
-        raise RuntimeError(f'图片不存在: {image_path}')
-    mime_type = mimetypes.guess_type(str(image_path))[0] or 'application/octet-stream'
-    with image_path.open('rb') as fh:
-        response = requests.post(
-            f'{BASE_URL}/drive/v1/medias/upload_all',
-            headers={'Authorization': f'Bearer {access_token}'},
-            data={
-                'file_name': image_path.name,
-                'parent_type': 'docx_image',
-                'parent_node': doc_token,
-                'size': str(image_path.stat().st_size),
-            },
-            files={'file': (image_path.name, fh, mime_type)},
-            timeout=60,
-        )
-    data = parse_response(response, '上传图片')
-    return data['data']['file_token']
-
-
-def append_image_block(access_token: str, doc_token: str, file_token: str) -> dict:
+def create_empty_image_block(access_token: str, doc_token: str) -> str:
     response = requests.post(
         f'{BASE_URL}/docx/v1/documents/{doc_token}/blocks/{doc_token}/children',
         headers={
@@ -94,15 +67,52 @@ def append_image_block(access_token: str, doc_token: str, file_token: str) -> di
             'children': [
                 {
                     'block_type': 27,
-                    'image': {
-                        'file_token': file_token,
-                    },
+                    'image': {},
                 }
             ]
         },
         timeout=30,
     )
-    return parse_response(response, '插入图片块')
+    data = parse_response(response, '创建空图片块')
+    return data['data']['children'][0]['block_id']
+
+
+def upload_image_material(access_token: str, block_id: str, image_path: Path) -> str:
+    if not image_path.exists():
+        raise RuntimeError(f'图片不存在: {image_path}')
+    mime_type = mimetypes.guess_type(str(image_path))[0] or 'application/octet-stream'
+    with image_path.open('rb') as fh:
+        response = requests.post(
+            f'{BASE_URL}/drive/v1/medias/upload_all',
+            headers={'Authorization': f'Bearer {access_token}'},
+            data={
+                'file_name': image_path.name,
+                'parent_type': 'docx_image',
+                'parent_node': block_id,
+                'size': str(image_path.stat().st_size),
+            },
+            files={'file': (image_path.name, fh, mime_type)},
+            timeout=60,
+        )
+    data = parse_response(response, '上传图片素材')
+    return data['data']['file_token']
+
+
+def replace_image(access_token: str, doc_token: str, block_id: str, file_token: str) -> dict:
+    response = requests.patch(
+        f'{BASE_URL}/docx/v1/documents/{doc_token}/blocks/{block_id}',
+        headers={
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json',
+        },
+        json={
+            'replace_image': {
+                'token': file_token,
+            }
+        },
+        timeout=30,
+    )
+    return parse_response(response, '更新图片块素材')
 
 
 def append_caption(access_token: str, doc_token: str, caption: str) -> Optional[dict]:
@@ -147,8 +157,9 @@ def main() -> None:
     image_path = Path(args.image_path).expanduser().resolve()
 
     try:
-        file_token = upload_image(access_token, doc_token, image_path)
-        image_result = append_image_block(access_token, doc_token, file_token)
+        block_id = create_empty_image_block(access_token, doc_token)
+        file_token = upload_image_material(access_token, block_id, image_path)
+        image_result = replace_image(access_token, doc_token, block_id, file_token)
         caption_result = append_caption(access_token, doc_token, args.caption) if args.caption else None
     except requests.HTTPError as exc:
         print(f'HTTP 请求失败: {exc}', file=sys.stderr)
@@ -159,6 +170,7 @@ def main() -> None:
 
     print(json.dumps({
         'doc_token': doc_token,
+        'block_id': block_id,
         'image_path': str(image_path),
         'file_token': file_token,
         'image_result': image_result,

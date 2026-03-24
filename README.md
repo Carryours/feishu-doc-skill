@@ -38,8 +38,8 @@ python3 -m pip install requests
 优先级如下：
 
 1. 如果环境里已有 `FEISHU_USER_ACCESS_TOKEN`，优先使用用户身份访问飞书。
-2. 如果没有用户 token，但配置了 `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET`，读取脚本会尝试走应用身份；需要用户身份写入时，可先跑本地 OAuth。
-3. 插图脚本默认优先从仓库根目录的 `.feishu-user-token.json` 读取 token。
+2. 如果环境变量里没有用户 token，读取和插图脚本都会自动尝试读取仓库根目录的 `.feishu-user-token.json`。
+3. 如果没有用户 token，但配置了 `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET`，读取脚本会尝试走应用身份；需要用户身份写入时，可先跑本地 OAuth。
 
 常用环境变量：
 
@@ -62,6 +62,12 @@ node scripts/feishu_oauth_server.js
 默认回调地址是 `http://127.0.0.1:3333/callback`。授权成功后，token 会保存到仓库根目录的 `.feishu-user-token.json`。
 
 ## 常见用法
+
+推荐的最短读取流程：
+
+1. 首次使用时运行 `node scripts/feishu_oauth_server.js` 完成一次授权。
+2. 之后直接运行 `python3 scripts/read_feishu_url_md.py "<飞书链接>"`。
+3. 如果 `.feishu-user-token.json` 已存在，脚本会自动复用，不需要每次手动导出 `FEISHU_USER_ACCESS_TOKEN`。
 
 提取链接中的文档 token：
 

@@ -5,6 +5,7 @@ import sys
 from typing import Any, Dict
 
 import requests
+from feishu_auth import get_auth_hint, get_user_access_token
 
 
 BASE_URL = "https://open.feishu.cn/open-apis"
@@ -65,11 +66,11 @@ def get_document_blocks(access_token: str, doc_token: str, page_size: int = 500)
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("用法: read_feishu_doc.py <doc_token>", file=sys.stderr)
+        print("用法: read_feishu_doc.py <doc_or_wiki_token>", file=sys.stderr)
         sys.exit(1)
 
     source_token = sys.argv[1]
-    user_access_token = os.getenv("FEISHU_USER_ACCESS_TOKEN")
+    user_access_token = get_user_access_token()
     app_id = os.getenv("FEISHU_APP_ID")
     app_secret = os.getenv("FEISHU_APP_SECRET")
 
@@ -78,10 +79,7 @@ def main() -> None:
         token_source = "user_access_token"
     else:
         if not app_id or not app_secret:
-            print(
-                "缺少 FEISHU_USER_ACCESS_TOKEN，且 FEISHU_APP_ID 或 FEISHU_APP_SECRET 也未配置",
-                file=sys.stderr,
-            )
+            print(get_auth_hint(), file=sys.stderr)
             sys.exit(2)
         access_token = get_tenant_access_token(app_id, app_secret)
         token_source = "tenant_access_token"
