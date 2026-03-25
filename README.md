@@ -40,9 +40,74 @@ node scripts/read_feishu_url_md.js "https://xxx.feishu.cn/wiki/xxxxxxxx"
 如果你要跑本地校验或测试，可以使用：
 
 ```bash
+npm run build
+npm run dev
 npm test
 npm run check
 ```
+
+其中：
+
+- `npm run dev` 进入开发调试入口，默认启动本地 OAuth 服务并开启 watch。
+- `npm run build` 生成一个干净的 skill 产物目录：`dist/feishu-doc-skill`。
+
+## 工程化开发
+
+### 开发模式
+
+现在推荐通过统一入口调试 skill：
+
+```bash
+npm run dev
+```
+
+默认等价于：
+
+```bash
+node --watch scripts/feishu_oauth_server.js
+```
+
+你也可以带子命令调试其他入口：
+
+```bash
+npm run dev -- read-md "https://xxx.feishu.cn/wiki/xxxxxxxx"
+npm run dev -- read-json "https://xxx.feishu.cn/wiki/xxxxxxxx"
+npm run dev -- read-doc "AtFwwJ3TwifgTpkbATOcYHQYnne"
+npm run dev -- extract "https://xxx.feishu.cn/wiki/xxxxxxxx"
+npm run dev -- insert-image "https://xxx.feishu.cn/docx/xxxxxxxx" "/absolute/path/to/image.png"
+```
+
+常用调试参数：
+
+```bash
+npm run dev -- --inspect read-doc "AtFwwJ3TwifgTpkbATOcYHQYnne"
+npm run dev -- --inspect-brk read-md "https://xxx.feishu.cn/wiki/xxxxxxxx"
+npm run dev -- --once read-md "https://xxx.feishu.cn/wiki/xxxxxxxx"
+```
+
+说明：
+
+- `--inspect` / `--inspect-brk` 用于接入 Chrome DevTools 或 VS Code 断点调试。
+- 默认开启 `--watch`，修改脚本文件后会自动重启。
+- `--once` 关闭 watch，适合执行一次性命令。
+
+### 构建产物
+
+执行：
+
+```bash
+npm run build
+```
+
+会生成：
+
+- `dist/feishu-doc-skill/SKILL.md`
+- `dist/feishu-doc-skill/README.md`
+- `dist/feishu-doc-skill/package.json`
+- `dist/feishu-doc-skill/.gitignore`
+- `dist/feishu-doc-skill/scripts/`
+
+这个产物目录不包含测试文件、Git 元信息和仓库杂项，适合作为干净的 skill 分发目录。
 
 ## 快速开始
 

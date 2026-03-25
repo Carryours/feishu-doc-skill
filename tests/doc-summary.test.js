@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const { parseDevArgs } = require('../scripts/dev');
 const { extractTokenFromUrl } = require('../scripts/lib/token');
 const { createReadUrlOutput, renderMarkdownDocument } = require('../scripts/lib/doc-summary');
 
@@ -89,4 +90,29 @@ test('renderMarkdownDocument keeps expected sections', () => {
   assert.match(markdown, /## 主要章节/);
   assert.match(markdown, /## 内容预览/);
   assert.match(markdown, /# 文档标题/);
+});
+
+test('parseDevArgs defaults to oauth watch mode', () => {
+  const result = parseDevArgs(['node', 'scripts/dev.js']);
+
+  assert.equal(result.command, 'oauth');
+  assert.equal(result.watch, true);
+  assert.equal(result.nodeArgs.length, 0);
+  assert.match(result.script, /feishu_oauth_server\.js$/);
+});
+
+test('parseDevArgs supports inspect and once flags', () => {
+  const result = parseDevArgs([
+    'node',
+    'scripts/dev.js',
+    '--inspect',
+    '--once',
+    'read-md',
+    'https://foo.feishu.cn/wiki/token',
+  ]);
+
+  assert.equal(result.command, 'read-md');
+  assert.equal(result.watch, false);
+  assert.deepEqual(result.nodeArgs, ['--inspect']);
+  assert.deepEqual(result.scriptArgs, ['https://foo.feishu.cn/wiki/token']);
 });
