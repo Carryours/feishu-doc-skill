@@ -1,6 +1,6 @@
 # feishu-doc-skill
 
-一个面向 Codex 的飞书文档读写 skill。它用于读取飞书 `wiki` / `docx` 页面、输出结构化 JSON 或 Markdown 摘要，并支持把本地图片插入飞书文档。
+一个面向通用 AI 助手 / agent 的飞书文档读写 skill。它用于读取飞书 `wiki` / `docx` 页面、输出结构化 JSON 或 Markdown 摘要，并支持把本地图片插入飞书文档。
 
 ## 能做什么
 
@@ -102,12 +102,9 @@ npm run build
 会生成：
 
 - `dist/feishu-doc-skill/SKILL.md`
-- `dist/feishu-doc-skill/README.md`
-- `dist/feishu-doc-skill/package.json`
-- `dist/feishu-doc-skill/.gitignore`
 - `dist/feishu-doc-skill/scripts/`
 
-这个产物目录不包含测试文件、Git 元信息和仓库杂项，适合作为干净的 skill 分发目录。
+这个产物目录只保留 skill 运行必需内容，不包含测试文件、Git 元信息、`README.md`、`package.json`、`.gitignore` 和开发辅助脚本，适合作为干净的 skill 分发目录。
 
 ## 快速开始
 
