@@ -1,4 +1,4 @@
-# feishu-doc-reader
+# feishu-doc-skill
 
 一个面向 Codex 的飞书文档读写 skill。它用于读取飞书 `wiki` / `docx` 页面、输出结构化 JSON 或 Markdown 摘要，并支持把本地图片插入飞书文档。
 
@@ -14,24 +14,34 @@
 ## 仓库结构
 
 - `SKILL.md`: Codex skill 入口说明
-- `scripts/feishu_auth.py`: 统一处理用户 token 读取逻辑
-- `scripts/extract_feishu_doc_id.py`: 从飞书链接中提取 token
+- `scripts/lib/auth.js`: 统一处理用户 token 和应用 token
+- `scripts/lib/token.js`: 解析飞书链接、token 和 wiki/docx 关系
+- `scripts/lib/doc-summary.js`: 生成摘要、章节和 Markdown 输出
+- `scripts/extract_feishu_doc_id.js`: 从飞书链接中提取 token
 - `scripts/feishu_oauth_server.js`: 本地 OAuth 回调服务
-- `scripts/read_feishu_doc.py`: 读取飞书文档原始接口数据
-- `scripts/read_feishu_url.py`: 读取飞书链接并输出结构化 JSON
-- `scripts/read_feishu_url_md.py`: 读取飞书链接并输出 Markdown
-- `scripts/insert_feishu_local_image.py`: 上传本地图片并插入到飞书文档
+- `scripts/read_feishu_doc.js`: 读取飞书文档原始接口数据
+- `scripts/read_feishu_url.js`: 读取飞书链接并输出结构化 JSON
+- `scripts/read_feishu_url_md.js`: 读取飞书链接并输出 Markdown
+- `scripts/insert_feishu_local_image.js`: 上传本地图片并插入到飞书文档
+- `package.json`: Node.js 工程脚本和校验入口
+- `tests/`: 纯 Node 测试
 
 ## 依赖要求
 
-- Python 3.10+
 - Node.js 18+
-- Python 包：`requests`
 
-安装依赖：
+运行说明：
 
 ```bash
-python3 -m pip install requests
+node scripts/read_feishu_url_md.js "https://xxx.feishu.cn/wiki/xxxxxxxx"
+```
+
+当前脚本只使用 Node.js 内置能力，直接运行即可，不要求额外安装第三方依赖。
+如果你要跑本地校验或测试，可以使用：
+
+```bash
+npm test
+npm run check
 ```
 
 ## 快速开始
@@ -52,19 +62,13 @@ node scripts/feishu_oauth_server.js
 
 授权完成后，token 会保存到仓库根目录的 `.feishu-user-token.json`。
 
-读取文档：
-
-```bash
-python3 scripts/read_feishu_url_md.py "https://xxx.feishu.cn/wiki/xxxxxxxx"
-```
-
 ## 鉴权规则
 
 脚本使用如下优先级获取访问凭证：
 
 1. 如果环境中已有 `FEISHU_USER_ACCESS_TOKEN`，优先使用用户身份。
 2. 如果未设置环境变量，自动读取仓库根目录的 `.feishu-user-token.json`。
-3. 如果没有用户 token，但设置了 `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET`，`read_feishu_doc.py` 会退回使用应用身份获取 `tenant_access_token`。
+3. 如果没有用户 token，但设置了 `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET`，`read_feishu_doc.js` 会退回使用应用身份获取 `tenant_access_token`。
 
 常用环境变量：
 
@@ -99,31 +103,31 @@ node scripts/feishu_oauth_server.js
 提取链接中的文档 token：
 
 ```bash
-python3 scripts/extract_feishu_doc_id.py "https://xxx.feishu.cn/wiki/xxxxxxxx"
+node scripts/extract_feishu_doc_id.js "https://xxx.feishu.cn/wiki/xxxxxxxx"
 ```
 
 读取文档原始结构：
 
 ```bash
-python3 scripts/read_feishu_doc.py "AtFwwJ3TwifgTpkbATOcYHQYnne"
+node scripts/read_feishu_doc.js "AtFwwJ3TwifgTpkbATOcYHQYnne"
 ```
 
 读取飞书链接并输出结构化 JSON：
 
 ```bash
-python3 scripts/read_feishu_url.py "https://xxx.feishu.cn/wiki/xxxxxxxx"
+node scripts/read_feishu_url.js "https://xxx.feishu.cn/wiki/xxxxxxxx"
 ```
 
 读取飞书链接并输出 Markdown：
 
 ```bash
-python3 scripts/read_feishu_url_md.py "https://xxx.feishu.cn/wiki/xxxxxxxx"
+node scripts/read_feishu_url_md.js "https://xxx.feishu.cn/wiki/xxxxxxxx"
 ```
 
 向飞书文档插入本地图片：
 
 ```bash
-python3 scripts/insert_feishu_local_image.py \
+node scripts/insert_feishu_local_image.js \
   "https://xxx.feishu.cn/docx/xxxxxxxx" \
   "/absolute/path/to/image.png"
 ```
@@ -131,7 +135,7 @@ python3 scripts/insert_feishu_local_image.py \
 插入图片并追加说明文字：
 
 ```bash
-python3 scripts/insert_feishu_local_image.py \
+node scripts/insert_feishu_local_image.js \
   "https://xxx.feishu.cn/docx/xxxxxxxx" \
   "/absolute/path/to/image.png" \
   --caption "这里是图片说明"
@@ -145,13 +149,13 @@ python3 scripts/insert_feishu_local_image.py \
 flowchart TD
     A[用户提供飞书链接或 token] --> B{任务类型}
 
-    B -->|读取并总结| C[read_feishu_url_md.py]
-    B -->|读取结构化 JSON| D[read_feishu_url.py]
-    B -->|查看原始接口数据| E[read_feishu_doc.py]
-    B -->|插入本地图片| F[insert_feishu_local_image.py]
+    B -->|读取并总结| C[read_feishu_url_md.js]
+    B -->|读取结构化 JSON| D[read_feishu_url.js]
+    B -->|查看原始接口数据| E[read_feishu_doc.js]
+    B -->|插入本地图片| F[insert_feishu_local_image.js]
 
     C --> D
-    D --> G[extract_feishu_doc_id.py 提取 token]
+    D --> G[extract_feishu_doc_id.js 提取 token]
     G --> E
 
     E --> H{是否存在用户 token}
@@ -167,8 +171,8 @@ flowchart TD
     N --> O
     O --> P[获取 metadata 和 blocks]
 
-    P --> Q[read_feishu_url.py 输出 JSON]
-    Q --> R[read_feishu_url_md.py 输出 Markdown]
+    P --> Q[read_feishu_url.js 输出 JSON]
+    Q --> R[read_feishu_url_md.js 输出 Markdown]
 
     F --> S[读取用户 token]
     S --> T{token 是否可用}
@@ -185,7 +189,7 @@ flowchart TD
 
 ## 各脚本用途与输出
 
-### `read_feishu_doc.py`
+### `read_feishu_doc.js`
 
 用于查看最原始的接口返回，适合调试权限、token 解析和块结构问题。
 
@@ -202,7 +206,7 @@ flowchart TD
 - `metadata`
 - `blocks`
 
-### `read_feishu_url.py`
+### `read_feishu_url.js`
 
 面向结构化处理。它会先从链接提取 token，再自动调用底层读取逻辑，输出适合程序继续消费的 JSON。
 
@@ -220,9 +224,9 @@ flowchart TD
 - `summary`
 - `content_preview`
 
-### `read_feishu_url_md.py`
+### `read_feishu_url_md.js`
 
-面向分析、总结、需求整理等任务。它基于 `read_feishu_url.py` 的结果，转换成更适合直接阅读的 Markdown。
+面向分析、总结、需求整理等任务。它基于 `read_feishu_url.js` 的结果，转换成更适合直接阅读的 Markdown。
 
 输出结构包括：
 
@@ -233,7 +237,7 @@ flowchart TD
 - 结构统计
 - 内容预览
 
-### `insert_feishu_local_image.py`
+### `insert_feishu_local_image.js`
 
 用于把本地图片上传后插入到飞书 `docx` 文档末尾，可选追加一行说明文字。
 
@@ -254,15 +258,15 @@ flowchart TD
 
 ## 使用建议
 
-- 做需求分析、总结、摘录时，优先使用 `scripts/read_feishu_url_md.py`。
-- 做结构化处理或调试下游程序时，优先使用 `scripts/read_feishu_url.py`。
-- 只有需要看飞书原始接口结构时，再使用 `scripts/read_feishu_doc.py`。
+- 做需求分析、总结、摘录时，优先使用 `node scripts/read_feishu_url_md.js`。
+- 做结构化处理或调试下游程序时，优先使用 `node scripts/read_feishu_url.js`。
+- 只有需要看飞书原始接口结构时，再使用 `node scripts/read_feishu_doc.js`。
 - 如果输入是 `wiki` 链接或 `wiki token`，读取和插图脚本都会尽量解析成实际 `docx obj_token` 再继续处理。
 
 ## 已知限制
 
 - 当前主要覆盖飞书 `docx` / `wiki` 场景。
-- `extract_feishu_doc_id.py` 支持从 `wiki` / `docx` / `docs` / `sheets` / `base` 链接提取 token，但正文读取和插图能力主要围绕文档场景实现。
+- `extract_feishu_doc_id.js` 支持从 `wiki` / `docx` / `docs` / `sheets` / `base` 链接提取 token，但正文读取和插图能力主要围绕文档场景实现。
 - 聊天中的图片附件不能稳定当作原始文件直接上传，插图时需要提供本地图片绝对路径。
 - 应用身份和用户身份的可访问范围由飞书开放平台权限配置决定。
 - 读取失败或写入失败时，应明确区分权限问题、token 问题、路径问题和文档类型问题。
